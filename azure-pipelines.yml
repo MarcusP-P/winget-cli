@@ -157,10 +157,3 @@ jobs:
       PathtoPublish: 'src\x64\Release\WinGetUtil\WinGetUtil.pdb'
       ArtifactName: 'WinGetUtil.pdb'
       publishLocation: 'Container'
-  
-  - task: ComponentGovernanceComponentDetection@0
-    displayName: Component Governance
-    inputs:
-      scanType: 'Register'
-      verbosity: 'Verbose'
-      alertWarningLevel: 'High'
