@@ -1,17 +1,3 @@
-# Commit triggers
-trigger:
-- master
-
-# PR triggers
-pr:
-  branches:
-    include:
-    - master
-  paths:
-    include:
-    - azure-pipelines.yml
-    - src/*
-
 pool:
   vmImage: 'windows-latest'
 
@@ -21,28 +7,10 @@ variables:
   buildConfiguration: 'Release'
   appxPackageDir: '$(build.artifactStagingDirectory)\AppxPackages\\'
 
-# Do not set the build version for a PR build.
-
-jobs:
-- job: 'GetReleaseTag'
-  condition: not(eq(variables['Build.Reason'], 'PullRequest'))
-  variables:
-    runCodesignValidationInjection: ${{ false }}
-    skipComponentGovernanceDetection: ${{ true }}
-  steps:
-  - task: PowerShell@2
-    name: 'GetTag'
-    displayName: Get Release Tag
-    inputs:
-      filePath: 'src\binver\Update-BinVer.ps1'
-      arguments: '-OutVar'
-      workingDirectory: 'src'
-
 - job: 'Build'
-  dependsOn: 'GetReleaseTag'
   condition: always()
   variables:
-    BuildVer: $[counter(dependencies.GetReleaseTag.outputs['GetTag.tag'], 1)]
+    BuildVer: 2
   steps:
   - task: NuGetToolInstaller@1
     displayName: Install Nuget
@@ -57,14 +25,6 @@ jobs:
     inputs:
       command: 'restore'
       projects: '**/*.csproj'
-  
-  - task: PowerShell@2
-    displayName: Update Binary Version
-    condition: not(eq(variables['Build.Reason'], 'PullRequest'))
-    inputs:
-      filePath: 'src\binver\Update-BinVer.ps1'
-      arguments: '-TargetFile binver\binver\version.h -BuildVersion $(BuildVer)'
-      workingDirectory: 'src'
   
   - task: VSBuild@1
     displayName: Build Solution
@@ -93,29 +53,6 @@ jobs:
 
 # TODO: Convert tests to run based on the whether things have worked up to this point
 
-#  - task: CmdLine@2
-#    displayName: Run Unit Tests Unpackaged x64
-#    inputs:
-#      script: |
-#        AppInstallerCLITests.exe -logto AICLI-Unpackaged-x64.log -s -r junit -o TEST-AppInstallerCLI-Unpackaged-x64.xml
-#      workingDirectory: 'src\x64\Release\AppInstallerCLITests\'
-#    condition: succeededOrFailed()
-  
-#  - task: PublishBuildArtifacts@1
-#    displayName: Publish Unit Tests Unpackaged Log x64
-#    inputs:
-#      PathtoPublish: 'src\x64\Release\AppInstallerCLITests\AICLI-Unpackaged-x64.log'
-#      ArtifactName: 'TestPassUnpackagedLog'
-#     publishLocation: 'Container'
-#    condition: succeededOrFailed()
-  
-#  - task: PublishBuildArtifacts@1
-#    displayName: Publish Unit Tests Unpackaged Output x64
-#    inputs:
-#      PathtoPublish: 'src\x64\Release\AppInstallerCLITests\TEST-AppInstallerCLI-Unpackaged-x64.xml'
-#      ArtifactName: 'TestPassUnpackagedOutput'
-#      publishLocation: 'Container'
-#    condition: succeededOrFailed()
   
   - task: PowerShell@2
     displayName: Run Unit Tests Packaged x64
@@ -141,30 +78,6 @@ jobs:
       publishLocation: 'Container'
     condition: succeededOrFailed()
 
-#  - task: CmdLine@2
-#    displayName: Run Unit Tests Unpackaged x86
-#    inputs:
-#      script: |
-#        AppInstallerCLITests.exe -logto AICLI-Unpackaged-x86.log -s -r junit -o TEST-AppInstallerCLI-Unpackaged-x86.xml
-#      workingDirectory: 'src\x86\Release\AppInstallerCLITests\'
-#    condition: succeededOrFailed()
-  
-#  - task: PublishBuildArtifacts@1
-#    displayName: Publish Unit Tests Unpackaged Log x86
-#    inputs:
-#      PathtoPublish: 'src\x86\Release\AppInstallerCLITests\AICLI-Unpackaged-x86.log'
-#      ArtifactName: 'TestPassUnpackagedLog'
-#      publishLocation: 'Container'
-#    condition: succeededOrFailed()
-  
-#  - task: PublishBuildArtifacts@1
-#    displayName: Publish Unit Tests Unpackaged Output x86
-#    inputs:
-#      PathtoPublish: 'src\x86\Release\AppInstallerCLITests\TEST-AppInstallerCLI-Unpackaged-x86.xml'
-#      ArtifactName: 'TestPassUnpackagedOutput'
-#      publishLocation: 'Container'
-#    condition: succeededOrFailed()
-  
   - task: PowerShell@2
     displayName: Run Unit Tests Packaged x86
     inputs:
@@ -197,16 +110,6 @@ jobs:
       failTaskOnFailedTests: true
     condition: succeededOrFailed()
 
-#  - task: VSTest@2
-#    displayName: Run E2E Tests Unpackaged x64
-#    inputs:
-#      testSelector: 'testAssemblies'
-#      testAssemblyVer2: 'src\x64\Release\AppInstallerCLIE2ETests\AppInstallerCLIE2ETests.dll'
-#      runSettingsFile: 'src\x64\Release\AppInstallerCLIE2ETests\Test.runsettings'
-#      overrideTestrunParameters: '-PackagedContext false
-#                                  -AICLIPath $(system.defaultWorkingDirectory)\src\x64\Release\AppInstallerCLI\AppInstallerCLI.exe'
-#    condition: succeededOrFailed()
-
   - task: VSTest@2
     displayName: Run E2E Tests Packaged x64
     inputs:
@@ -219,16 +122,6 @@ jobs:
                                   -LooseFileRegistration true
                                   -InvokeCommandInDesktopPackage true'
     condition: succeededOrFailed()
-
-#  - task: VSTest@2
-#    displayName: Run E2E Tests Unpackaged x86
-#    inputs:
-#      testSelector: 'testAssemblies'
-#      testAssemblyVer2: 'src\x86\Release\AppInstallerCLIE2ETests\AppInstallerCLIE2ETests.dll'
-#      runSettingsFile: 'src\x86\Release\AppInstallerCLIE2ETests\Test.runsettings'
-#      overrideTestrunParameters: '-PackagedContext false
-#                                  -AICLIPath $(system.defaultWorkingDirectory)\src\x86\Release\AppInstallerCLI\AppInstallerCLI.exe'
-#    condition: succeededOrFailed()
 
   - task: VSTest@2
     displayName: Run E2E Tests Packaged x86
